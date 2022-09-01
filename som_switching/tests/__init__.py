@@ -6,3 +6,5 @@ from tests_activacions_b1 import *
 from tests_activacions_b2 import *
 from tests_wizard_comment_to_F1 import *
 from tests_wizard_switching_b1 import *
+from tests_wizard_import_atr_and_f1 import *
+from tests_unlink_atc import *

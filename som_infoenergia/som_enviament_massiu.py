@@ -27,10 +27,15 @@ class SomEnviamentMassiu(osv.osv):
     _name = 'som.enviament.massiu'
 
     def create(self, cursor, uid, vals=None, context=None):
-        pol_obj = self.pool.get('giscedata.polissa')
         if 'polissa_id' in vals:
+            pol_obj = self.pool.get('giscedata.polissa')
             titular_id = pol_obj.read(cursor, uid, vals['polissa_id'], ['titular'])['titular'][0]
             vals['partner_id'] = titular_id
+        elif 'invoice_id' in vals:
+            inv_obj = self.pool.get('account.invoice')
+            partner_id = inv_obj.read(cursor, uid, vals['invoice_id'], ['partner_id'])[
+                'partner_id'][0]
+            vals['partner_id'] = partner_id
 
         return super(SomEnviamentMassiu, self).create(cursor, uid, vals, context)
 
@@ -136,6 +141,14 @@ class SomEnviamentMassiu(osv.osv):
                     self.add_info_line(cursor, uid, _id, "Correu enviat", context)
         return True
 
+    def poweremail_unlink_callback(self, cursor, uid, ids, vals, context=None):
+        """Hook que cridarà el poweremail quan s'esborra un email
+        d'un enviament.
+        """
+        for _id in ids:
+            self.write(cursor, uid, _id, {'estat':'obert'})
+            self.add_info_line(cursor, uid, _id, "Correu eliminat de la bústia", context)
+        return True
 
     _columns = {
         'polissa_id': fields.many2one('giscedata.polissa', _('Contracte'),
@@ -144,6 +157,9 @@ class SomEnviamentMassiu(osv.osv):
         'partner_id': fields.many2one('res.partner', _('Contacte'),
             ondelete='restrict',
             select=True),
+        'invoice_id': fields.many2one('account.invoice', _('Factura'),
+            ondelete='restrict',
+            select=True, pol_rel='no'),
         'lang': fields.related('partner_id', 'lang',
             type='char',
             help=_("Idioma del partner"),
@@ -160,7 +176,7 @@ class SomEnviamentMassiu(osv.osv):
             ondelete='restrict',
             select=True),
         'mail_id': fields.many2one(
-            'poweremail.mailbox', 'Mail'
+            'poweremail.mailbox', 'Mail', ondelete='set null'
         ),
         'data_enviament':  fields.date(_("Data enviament"), allow_none=True),
         'info': fields.text(_(u'Informació Adicional'),

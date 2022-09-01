@@ -546,12 +546,15 @@ class GiscedataFacturacioFacturaReport(osv.osv):
 
         partner_id = sw_obj.partner_map(self.cursor, self.uid,
                                         polissa.cups, polissa.distribuidora.id)
-        if partner_id:
-            pa_ids = pa_obj.search(self.cursor, self.uid, [('partner_id', '=', partner_id)])
-            return (pa_obj.read(self.cursor, self.uid, [pa_ids[0]],['phone'])[0]['phone'] or
-                    polissa.distribuidora.address[0].phone)
-        else:
-            return polissa.distribuidora.address[0].phone
+        try:
+            if partner_id:
+                pa_ids = pa_obj.search(self.cursor, self.uid, [('partner_id', '=', partner_id)])
+                return (pa_obj.read(self.cursor, self.uid, [pa_ids[0]],['phone'])[0]['phone'] or
+                        polissa.distribuidora.address[0].phone)
+            else:
+                return polissa.distribuidora.address[0].phone
+        except:
+            return polissa.distribuidora.www_phone
 
     def get_atr_price(self, fact, tarifa, linia):
         pricelist_obj = linia.pool.get('product.pricelist')
@@ -1825,14 +1828,18 @@ class GiscedataFacturacioFacturaReport(osv.osv):
 
             days_per_year = is_leap_year(datetime.strptime(l.data_desde, '%Y-%m-%d').year) and 366 or 365
 
-            lines_data[block][l.name] = {
-                'quantity': l.quantity,
-                'atr_price': self.get_atr_price( fact, pol.llista_preu.id, l),
-                'price_subtotal': l.price_subtotal,
-                'price_unit_multi': l.price_unit_multi,
-                'price_unit': l.price_unit,
-                'extra': l.multi,
-            }
+            if lines_data.has_key(block) and lines_data[block].has_key(l.name):
+                lines_data[block][l.name]['quantity'] = lines_data[block][l.name]['quantity'] + l.quantity
+                lines_data[block][l.name]['price_subtotal'] = lines_data[block][l.name]['price_subtotal'] + l.price_subtotal
+            else:
+                lines_data[block][l.name] = {
+                    'quantity': l.quantity,
+                    'atr_price': self.get_atr_price( fact, pol.llista_preu.id, l),
+                    'price_subtotal': l.price_subtotal,
+                    'price_unit_multi': l.price_unit_multi,
+                    'price_unit': l.price_unit,
+                    'extra': l.multi,
+                }
             lines_data[block]['multi'] = l.multi
             lines_data[block]['days_per_year'] = days_per_year
             lines_data[block]['total'] += l.price_subtotal
